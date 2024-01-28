@@ -22,6 +22,9 @@ import JSZip from "jszip";
 // @ts-ignore
 import EditorWorker from "url:monaco-editor/esm/vs/editor/editor.worker.js";
 import { editor } from "monaco-editor";
+import { randomString } from '../ts/utils';
+import { ValueTypes } from "yjs/dist/src/internals";
+import TextEditorInterface from '../ts/TextEditorInterface';
 
 // @ts-ignore
 window.MonacoEnvironment = {
@@ -41,7 +44,8 @@ window.MonacoEnvironment = {
     }
     */
     return EditorWorker;
-  },
+  }
+  
 };
 
 export default {
@@ -340,6 +344,8 @@ export default {
       console.log("liascript: preview ready");
       this.preview = preview;
       this.compile();
+     
+      
     },
 
     gotoEditor(line: number) {
@@ -354,7 +360,44 @@ export default {
 
     previewUpdate(params: any) {
       console.log("liascript: update");
+      
 
+      // @ts-ignore
+      window.LiascriptEditor ={
+          value: this.$refs.editor.getValue(),
+      }
+
+      const iframe = document.getElementById(
+        "liascript-preview"
+      ) as HTMLIFrameElement;
+      
+      setTimeout(()=>{
+      
+        const navbar = iframe.contentDocument?.getElementById('lia-toolbar-nav') as HTMLElement;
+        if(navbar)
+          navbar.style.display="none"
+        const searchbar = iframe.contentDocument?.querySelector('.lia-toc__search') as HTMLElement;
+        if(searchbar)
+          searchbar.style.display="none"
+        const slides = iframe.contentDocument?.querySelectorAll('.lia-slide__content');
+        slides?.forEach((s)=>s.style.margin=0)
+        const container = iframe.contentDocument?.querySelectorAll('.lia-slide__container');
+        container?.forEach((s)=>s.style.marginTop="20px")
+        const toctoggle = iframe.contentDocument?.querySelector('#lia-toc button') as HTMLElement;
+
+        const newRule1 = '.lia-toc--open button#lia-btn-toc { transform: translate(0rem, -100%)!important;}';
+        const newRule2 = '.lia-toc button#lia-btn-toc { transform: translate(5rem, -80%)}';
+        const sheet = iframe.contentDocument?.styleSheets[0];
+        sheet?.insertRule(newRule1, sheet.cssRules.length);
+        sheet?.insertRule(newRule2, sheet.cssRules.length);
+
+
+        
+
+      }, 50);
+        
+
+      
       this.compilationCounter++;
       if (this.compilationCounter > 1) {
         this.previewNotReady = false;
@@ -371,6 +414,14 @@ export default {
   },
 
   components: { Editor, Preview, Modal },
+
+  mounted() {
+    
+    // Machen Sie die Methode global über `window` zugänglich
+    // @ts-ignore
+    window.updateEditorContent = this.updateEditorContent;
+  },
+
 };
 </script>
 
@@ -378,6 +429,7 @@ export default {
 
   <nav class="navbar navbar-expand-lg bg-light">
     <div class="container-fluid">
+      <!--
       <a
         class="navbar-brand"
         href="./"
@@ -390,7 +442,7 @@ export default {
         >
         LiaEdit
       </a>
-
+      -->
       <button
         type="button"
         class="btn btn-outline-secondary me-2 px-3"
@@ -487,315 +539,7 @@ export default {
       <div
         class="collapse navbar-collapse"
         id="navbarSupportedContent"
-      >
-
-        <!-- SPAN -->
-        <div class="navbar-nav me-auto mb-lg-0">
-        </div>
-
-        <div class="navbar-nav mb-2 mb-lg-0">
-
-          <div class="nav-item nav-item-sm ml-4 me-4">
-            <a
-              class="nav-link"
-              aria-current="page"
-              href="./?/edit"
-              title="Create a new and empty document"
-              data-link
-            >
-              <i class="bi bi-plus"></i>
-              New
-            </a>
-          </div>
-
-          <div class="nav-item me-4">
-            <button
-              type="button"
-              class="btn nav-link btn-link"
-              @click="fork"
-              title="Create a copy of this document"
-            >
-              <i class="bi bi-signpost-split"></i>
-              Fork
-            </button>
-          </div>
-
-          <div class="nav-item dropdown me-4">
-            <a
-              class="nav-link dropdown-toggle"
-              href="#"
-              role="button"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-            >
-              Menu
-            </a>
-
-            <ul class="dropdown-menu">
-              <li>
-                <h6 class="dropdown-header fw-light">
-                  Share editor ...
-                </h6>
-              </li>
-              <li>
-                <span
-                  class="d-inline-block"
-                  tabindex="0"
-                  data-toggle="tooltip"
-                  title="Fork this document before you can use this function"
-                >
-                  <button
-                    class="btn dropdown-item btn-link"
-                    @click="shareLink"
-                    :disabled="!storageId"
-                  >
-                    collaboration link
-                  </button>
-                </span>
-              </li>
-              <li>
-                <button
-                  class="btn dropdown-item btn-link"
-                  @click="shareCode"
-                >
-                  snapshot url
-                </button>
-              </li>
-              <li>
-                <button
-                  class="btn dropdown-item btn-link"
-                  @click="shareFile"
-                >
-                  external resource
-                </button>
-              </li>
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li>
-                <h6 class="dropdown-header fw-light">
-                  Share course via ...
-                </h6>
-              </li>
-              <li>
-                <span
-                  class="d-inline-block"
-                  tabindex="0"
-                  data-toggle="tooltip"
-                  title="You have to export this file to GitHub gist before you can use this functionality"
-                >
-                  <a
-                    class="dropdown-item"
-                    :class="{disabled: !meta.meta?.gist_url}"
-                    :href="'https://liascript.github.io/course/?' + meta.meta?.gist_url"
-                    target="_blank"
-                  >
-                    GitHub gist link
-                  </a>
-                </span>
-              </li>
-              <li>
-                <button
-                  class="btn dropdown-item btn-link"
-                  @click="shareData"
-                >
-                  data-URI
-                </button>
-              </li>
-              <li>
-                <div
-                  class="d-inline-block"
-                  tabindex="0"
-                  style="width: 100%"
-                  data-toggle="tooltip"
-                  title="This function is only available if you have shared an external resource"
-                >
-                  <a
-                    class="btn dropdown-item btn-link"
-                    :class="{disabled: !fileUrl}"
-                    :href="'https://LiaScript.github.io/course/?' + fileUrl"
-                    target="_blank"
-                    title="open this course on LiaScript"
-                  >
-                    file URL
-                  </a>
-                </div>
-              </li>
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li>
-                <h6 class="dropdown-header fw-light">
-                  Download to ...
-                </h6>
-              </li>
-              <li>
-                <button
-                  class="btn dropdown-item btn-link"
-                  @click="download"
-                >
-                  README.md
-                </button>
-              </li>
-              <li>
-                <button
-                  class="btn dropdown-item btn-link"
-                  @click="downloadZip"
-                >
-                  Project-{{$props?.storageId?.slice(0,8) || "xxxxxxxx"}}.zip
-                </button>
-              </li>
-              <!--li>
-                <hr class="dropdown-divider">
-              </li>
-              <li>
-                <h6 class="dropdown-header fw-light">
-                  Upload from ...
-                </h6>
-              </li>
-
-              <li>
-                <input
-                  type="file"
-                  id="uploadMarkdown"
-                  style="display: none;"
-                >
-                <button
-                  class="btn dropdown-item btn-link"
-                  @click="upload"
-                >
-                  README.md
-                </button>
-              </li>
-              <li>
-                <input
-                  type="file"
-                  id="uploadZip"
-                  style="display: none;"
-                >
-                <button
-                  class="btn dropdown-item btn-link"
-                  @click="uploadZip"
-                >
-                  Project.zip
-                </button>
-              </li-->
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li>
-                <h6 class="dropdown-header fw-light">
-                  Export to...
-                </h6>
-              </li>
-              <li>
-                <span
-                  class="d-inline-block"
-                  style="width:100%"
-                  tabindex="0"
-                  data-toggle="tooltip"
-                  title="Fork this document before you can use this function"
-                >
-
-                  <a
-                    class="btn dropdown-item btn-link"
-                    :class="{disabled: !storageId}"
-                    aria-current="page"
-                    target="_blank"
-                    :href="urlPath(['export', 'github', storageId])"
-                    title="Store the document on github"
-                  >
-                    GitHub gist
-                  </a>
-                </span>
-              </li>
-            </ul>
-          </div>
-
-          <div class="nav-item dropdown me-4">
-            <button
-              class="btn badge dropdown-toggle p-3"
-              :class="conn.users === 0 ? 'bg-secondary' : 'bg-primary'"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-              style="width: 100%;"
-            >
-              {{ conn.type  }}
-              <i class="bi bi-people-fill mx-1"></i>
-              <span class="mx-1">
-                {{ conn.users > 0 ? conn.users : '' }}
-              </span>
-            </button>
-
-            <ul class="dropdown-menu">
-              <li>
-                <span
-                  class="d-inline-block"
-                  style="width:100%"
-                  tabindex="0"
-                  data-toggle="tooltip"
-                  title="Fork this document before you can use this function"
-                >
-
-                  <a
-                    class="btn dropdown-item btn-link"
-                    :class="{disabled: !storageId}"
-                    aria-current="page"
-                    :href="this.urlPath(['edit', storageId])"
-                    title="Store the document on github"
-                  >
-                    Offline
-                  </a>
-                </span>
-              </li>
-
-              <li>
-                <span
-                  class="d-inline-block"
-                  style="width:100%"
-                  tabindex="0"
-                  data-toggle="tooltip"
-                  title="Fork this document before you can use this function"
-                >
-
-                  <a
-                    class="btn dropdown-item btn-link"
-                    :class="{disabled: !storageId}"
-                    aria-current="page"
-                    :href="this.urlPath(['edit', storageId, 'webrtc'])"
-                    title="Store the document on github"
-                  >
-                    WebRTC
-                  </a>
-                </span>
-              </li>
-              <li>
-                <span
-                  class="d-inline-block"
-                  style="width:100%"
-                  tabindex="0"
-                  data-toggle="tooltip"
-                  title="Fork this document before you can use this function"
-                >
-
-                  <a
-                    class="btn dropdown-item btn-link"
-                    :class="{disabled: !storageId}"
-                    aria-current="page"
-                    :href="this.urlPath(['edit', storageId, 'websocket'])"
-                    title="Store the document on github"
-                  >
-                    Websocket
-                  </a>
-                </span>
-              </li>
-
-            </ul>
-          </div>
-
-        </div>
-      </div>
-
+      ></div>
     </div>
   </nav>
 
@@ -809,9 +553,9 @@ export default {
       style="height: calc(100vh - 56px);"
     >
       <div
-        class="col-6 w-50 p-0 h-100"
+        class="col-5 w-45 p-0 h-100"
         :hidden="mode > 0"
-        :class="{'w-50': mode==0, 'w-100': mode!=0}"
+        :class="{'w-45': mode==0, 'w-100': mode!=0}"
         style="border-right: solid lightgray 2px;"
       >
         <Editor
@@ -829,9 +573,9 @@ export default {
       </div>
 
       <div
-        class="col-6 w-50 h-100 p-0"
+        class="col-7 w-55 h-100 p-0"
         :hidden="mode < 0"
-        :class="{'w-50': mode==0, 'w-100': mode!=0}"
+        :class="{'w-55': mode==0, 'w-100': mode!=0}"
       >
         <div
           v-show="previewNotReady"
