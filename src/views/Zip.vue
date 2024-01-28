@@ -36,7 +36,6 @@ export default {
       this.data = errorMsg(e.message);
     }
   },
-
   components: { LiaScript, Toast },
 };
 </script>
@@ -49,7 +48,5 @@ export default {
   >
   </LiaScript>
 
-  <Toast :hidden="error">
-    You can modify and compile this course with Ctrl+S, but if you want to store your changes permanently you have to fork it!
-  </Toast>
+  
 </template>
